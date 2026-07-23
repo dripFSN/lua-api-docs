@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lua API · DripHook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-primary: #0b0b14;
+      --bg-secondary: #10101e;
+      --bg-panel: rgba(18, 18, 36, 0.75);
+      --bg-glass: rgba(30, 30, 60, 0.6);
+      --border-glass: rgba(130, 130, 240, 0.12);
+      --text-primary: #eeeef8;
+      --text-secondary: #b0b0d0;
+      --text-muted: #6a6a8a;
+      --accent: #7c6cf0;
+      --accent-glow: #5d4ad6;
+      --accent-cyan: #3dd9eb;
+      --code-bg: #0e0e1a;
+      --code-border: #2a2a50;
+      --shadow: 0 20px 40px -12px rgba(0,0,0,0.8);
+      --radius: 16px;
+      --transition: 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 8px; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-glass);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: transform var(--transition);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding: 20px 18px 14px;
+      border-bottom: 1px solid var(--border-glass);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(10,10,22,0.7);
+      backdrop-filter: blur(8px);
+    }
+    .sidebar-header .logo {
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sidebar-header .badge {
+      background: var(--accent-glow);
+      font-size: 10px;
+      padding: 2px 10px;
+      border-radius: 40px;
+      color: #fff;
+      letter-spacing: 0.3px;
+      font-weight: 600;
+      -webkit-text-fill-color: white;
+    }
+
+    .sidebar-search {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-glass);
+    }
+    .sidebar-search input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 40px;
+      border: 1px solid var(--border-glass);
+      background: var(--bg-panel);
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: var(--transition);
+    }
+    .sidebar-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,108,240,0.25); }
+    .sidebar-search input::placeholder { color: var(--text-muted); }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 6px 30px;
+    }
+    .sidebar-nav .category {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      padding: 16px 12px 6px;
+      font-weight: 600;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      margin-top: 6px;
+    }
+    .sidebar-nav .category:first-of-type { border-top: none; margin-top: 0; }
+
+    .sidebar-nav .nav-item {
+      display: block;
+      padding: 5px 14px 5px 18px;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: var(--transition);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      margin: 1px 0;
+    }
+    .sidebar-nav .nav-item:hover, .sidebar-nav .nav-item.active {
+      background: var(--bg-glass);
+      color: #fff;
+      border-left-color: var(--accent);
+      box-shadow: 0 0 20px rgba(124,108,240,0.15);
+    }
+    .sidebar-nav .nav-item .sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 400;
+      padding-left: 6px;
+    }
+    .sidebar-nav .group-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px 6px 14px;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: var(--transition);
+      margin-top: 2px;
+      letter-spacing: 0.2px;
+    }
+    .sidebar-nav .group-toggle:hover { background: var(--bg-glass); color: #fff; box-shadow: 0 0 16px rgba(124,108,240,0.08); }
+    .sidebar-nav .group-toggle .arrow { transition: transform 0.2s; display: inline-block; font-size: 11px; margin-right: 4px; }
+    .sidebar-nav .group-toggle.open .arrow { transform: rotate(90deg); }
+    .sidebar-nav .group-children { overflow: hidden; padding-left: 10px; border-left: 1px solid var(--border-glass); margin-left: 8px; display: none; }
+
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 40px 80px;
+      background: radial-gradient(ellipse at 20% 30%, rgba(60, 40, 160, 0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 70%, rgba(0, 180, 220, 0.05) 0%, transparent 50%);
+    }
+    .main .breadcrumb {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .main .breadcrumb span { color: var(--text-secondary); }
+
+    .main h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #fff 60%, var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .main .subhead {
+      color: var(--text-secondary);
+      font-size: 16px;
+      margin-bottom: 28px;
+      border-left: 3px solid var(--accent);
+      padding-left: 16px;
+    }
+
+    .doc-section {
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.3s, border-color 0.3s;
+    }
+    .doc-section:hover {
+      box-shadow: 0 24px 48px -12px rgba(0,0,0,0.8), 0 0 0 1px rgba(124,108,240,0.15);
+      border-color: rgba(124,108,240,0.25);
+    }
+
+    .doc-section h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .doc-section h2 .type-tag {
+      font-size: 12px;
+      background: var(--accent-glow);
+      padding: 2px 14px;
+      border-radius: 40px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      -webkit-text-fill-color: white;
+      box-shadow: 0 0 12px rgba(93,74,214,0.3);
+    }
+    .doc-section .signature {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--code-bg);
+      padding: 12px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--code-border);
+      color: var(--accent-cyan);
+      font-size: 14px;
+      margin: 14px 0 10px;
+      overflow-x: auto;
+    }
+    .doc-section .desc {
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin: 8px 0 12px;
+    }
+    .doc-section .params, .doc-section .returns {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 4px 12px;
+      background: rgba(0,0,0,0.25);
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin: 8px 0 12px;
+      font-size: 14px;
+    }
+    .doc-section .params .pname, .doc-section .returns .rname {
+      color: var(--accent-cyan);
+      font-weight: 500;
+    }
+    .doc-section .params .ptype, .doc-section .returns .rtype {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .code-block {
+      position: relative;
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: 12px;
+      margin: 16px 0 8px;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+    .code-block:hover { border-color: rgba(124,108,240,0.3); }
+    .code-block pre {
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      color: #e0e0f0;
+    }
+    .code-block .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: var(--bg-glass);
+      border: none;
+      color: var(--text-secondary);
+      padding: 4px 14px;
+      border-radius: 30px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: 'Inter', sans-serif;
+      backdrop-filter: blur(4px);
+    }
+    .code-block .copy-btn:hover { background: var(--accent); color: #fff; box-shadow: 0 0 20px rgba(124,108,240,0.3); }
+
+    .note {
+      background: rgba(60, 60, 160, 0.15);
+      border-left: 4px solid var(--accent);
+      padding: 12px 18px;
+      border-radius: 8px;
+      margin: 12px 0;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    .note strong { color: var(--text-primary); }
+    .note a { color: var(--accent-cyan); text-decoration: none; border-bottom: 1px dotted var(--accent-cyan); cursor: pointer; }
+    .note a:hover { color: #fff; border-bottom-color: #fff; }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) { .grid-2col { grid-template-columns: 1fr; } }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 26px;
+      padding: 8px 14px;
+      cursor: pointer;
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 200;
+      background: var(--bg-panel);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-glass);
+    }
+    @media (max-width: 760px) {
+      .sidebar { position: fixed; top: 0; left: 0; height: 100%; width: 280px; transform: translateX(-110%); transition: transform 0.3s; }
+      .sidebar.open { transform: translateX(0); }
+      .hamburger { display: block; }
+      .main { padding: 20px 16px 60px; }
+    }
+
+    .glow-text { color: var(--accent-cyan); }
+    .tag { background: var(--bg-glass); padding: 2px 10px; border-radius: 40px; font-size: 12px; color: var(--text-secondary); }
+
+    .fade-in { animation: fadeUp 0.5s ease forwards; opacity: 0; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    .event-params { background: rgba(0,0,0,0.25); padding: 12px 16px; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; margin: 6px 0 12px; }
+    .related-link { display: inline-block; margin-right: 8px; padding: 2px 12px; background: rgba(124,108,240,0.15); border-radius: 40px; font-size: 13px; color: var(--accent-cyan); }
+    .related-link:hover { background: rgba(124,108,240,0.3); color: #fff; }
+  </style>
+</head>
+<body>
+<button class="hamburger" id="hamburger" aria-label="Toggle navigation">☰</button>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="logo">⚡ DripHook</span>
+    <span class="badge">Lua API</span>
+  </div>
+  <div class="sidebar-search">
+    <input type="text" id="search" placeholder="Search API…" autocomplete="off">
+  </div>
+  <nav class="sidebar-nav" id="navContainer"></nav>
+</aside>
+
+<main class="main" id="mainContent">
+  <div class="breadcrumb">Lua API <span>/ Reference</span></div>
+  <h1>Scripting API</h1>
+  <div class="subhead">Complete reference for DripHook Lua environment · 100+ bindings</div>
+  <div id="docContent"></div>
+</main>
+
+<script>
+// --------------------------------------------------------------
+// DATA: extracted from Bridge.cpp / StdLib.h
+// --------------------------------------------------------------
+const API = {
+  global: {
+    functions: [
+      { name: 'print', sig: 'print(...)', desc: 'Logs to console with default color.', params: [{name:'...', type:'any'}] },
+      { name: 'error', sig: 'error(msg)', desc: 'Prints an error message in red.', params: [{name:'msg', type:'string'}] },
+      { name: 'print_raw', sig: 'print_raw(msg, [color])', desc: 'Prints raw message with optional color.', params: [{name:'msg',type:'string'},{name:'color',type:'color',opt:true}] },
+      { name: 'chat_print', sig: 'chat_print(msg)', desc: 'Sends a message to in-game chat (prepends a space).', params: [{name:'msg',type:'string'}] },
+      { name: 'safe_call', sig: 'safe_call(func)', desc: 'Calls a protected function and prints any errors.', params: [{name:'func',type:'function'}] },
+      { name: 'to_ticks', sig: 'to_ticks(time)', desc: 'Converts seconds to ticks.', params: [{name:'time',type:'float'}] },
+      { name: 'to_time', sig: 'to_time(ticks)', desc: 'Converts ticks to seconds.', params: [{name:'ticks',type:'int'}] }
+    ]
+  },
+  namespaces: {
+    client: {
+      desc: 'Client-side hooks and utilities.',
+      functions: [
+        { name: 'add_callback', sig: 'client.add_callback(event, func)', desc: 'Registers a hook for the given event. See <a href="#events-section" class="event-link">Events</a> section for available events.', params: [{name:'event',type:'string'},{name:'func',type:'function'}] },
+        { name: 'unload_script', sig: 'client.unload_script()', desc: 'Unloads the current script.', params: [] },
+        { name: 'reload_script', sig: 'client.reload_script()', desc: 'Reloads the current script.', params: [] }
+      ]
+    },
+    entity: {
+      desc: 'Entity management and manipulation.',
+      functions: [
+        { name: 'get', sig: 'entity.get(index, [is_userid])', desc: 'Gets an entity by index or userid.', params: [{name:'index',type:'int'},{name:'is_userid',type:'bool',opt:true}] },
+        { name: 'get_local_player', sig: 'entity.get_local_player()', desc: 'Returns the local player.', params: [] },
+        { name: 'get_player_resource', sig: 'entity.get_player_resource()', desc: 'Returns the player resource entity.', params: [] },
+        { name: 'from_handle', sig: 'entity.from_handle(handle)', desc: 'Gets entity from a handle.', params: [{name:'handle',type:'uint'}] }
+      ]
+    },
+    ui: {
+      desc: 'User interface controls and elements.',
+      functions: [
+        { name: 'tab', sig: 'ui.tab(name, [icon])', desc: 'Creates a new tab in the menu.', params: [{name:'name',type:'string'},{name:'icon',type:'image_t',opt:true}] },
+        { name: 'groupbox', sig: 'ui.groupbox(tab, name)', desc: 'Creates a groupbox inside a tab.', params: [{name:'tab',type:'string'},{name:'name',type:'string'}] },
+        { name: 'find', sig: 'ui.find(tab, group, [widget], [wtype])', desc: 'Finds a UI element.', params: [{name:'tab',type:'string'},{name:'group',type:'string'},{name:'widget',type:'string',opt:true},{name:'wtype',type:'WidgetType',opt:true}] },
+        { name: 'is_open', sig: 'ui.is_open()', desc: 'Returns true if the menu is open.', params: [] },
+        { name: 'get_binds', sig: 'ui.get_binds()', desc: 'Returns a table of active keybinds.', params: [] }
+      ]
+    },
+    render: {
+      desc: 'Rendering and drawing functions.',
+      functions: [
+        { name: 'screen_size', sig: 'render.screen_size()', desc: 'Returns screen dimensions as vector.', params: [] },
+        { name: 'camera_angles', sig: 'render.camera_angles([angle])', desc: 'Gets or sets camera angles.', params: [{name:'angle',type:'qangle',opt:true}] },
+        { name: 'camera_position', sig: 'render.camera_position()', desc: 'Returns camera world position.', params: [] },
+        { name: 'get_weapon_icon', sig: 'render.get_weapon_icon(weap_id)', desc: 'Returns weapon icon image.', params: [{name:'weap_id',type:'int'}] },
+        { name: 'add_font', sig: 'render.add_font(memory)', desc: 'Adds a font from memory (TTF/OTF data).', params: [{name:'memory',type:'string'}] },
+        { name: 'load_font', sig: 'render.load_font(name, size, flags)', desc: 'Loads a font by name and size. flags: "b" bold, "a" antialias', params: [{name:'name',type:'string'},{name:'size',type:'int'},{name:'flags',type:'string'}] },
+        { name: 'load_image', sig: 'render.load_image(memory, size)', desc: 'Loads image from memory (PNG/JPG).', params: [{name:'memory',type:'string'},{name:'size',type:'vector'}] },
+        { name: 'line', sig: 'render.line(start, end, color)', desc: 'Draws a 2D line.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'color',type:'color'}] },
+        { name: 'poly', sig: 'render.poly(color, ...vertices)', desc: 'Draws a filled polygon.', params: [{name:'color',type:'color'},{name:'...',type:'vector'}] },
+        { name: 'poly_line', sig: 'render.poly_line(color, ...vertices)', desc: 'Draws a polyline.', params: [{name:'color',type:'color'},{name:'...',type:'vector'}] },
+        { name: 'rect', sig: 'render.rect(start, end, color, [rounding])', desc: 'Draws a filled rectangle.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'color',type:'color'},{name:'rounding',type:'int',opt:true}] },
+        { name: 'rect_outline', sig: 'render.rect_outline(start, end, color, [rounding])', desc: 'Draws a rectangle outline.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'color',type:'color'},{name:'rounding',type:'int',opt:true}] },
+        { name: 'gradient', sig: 'render.gradient(start, end, tl, tr, bl, br)', desc: 'Draws a gradient-filled rectangle.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'tl',type:'color'},{name:'tr',type:'color'},{name:'bl',type:'color'},{name:'br',type:'color'}] },
+        { name: 'circle', sig: 'render.circle(center, color, radius, [start_deg], [pct])', desc: 'Draws a filled circle.', params: [{name:'center',type:'vector'},{name:'color',type:'color'},{name:'radius',type:'float'},{name:'start_deg',type:'float',opt:true},{name:'pct',type:'float',opt:true}] },
+        { name: 'circle_outline', sig: 'render.circle_outline(center, color, radius, [start_deg], [pct], [thickness])', desc: 'Draws a circle outline.', params: [{name:'center',type:'vector'},{name:'color',type:'color'},{name:'radius',type:'float'},{name:'start_deg',type:'float',opt:true},{name:'pct',type:'float',opt:true},{name:'thickness',type:'int',opt:true}] },
+        { name: 'circle_gradient', sig: 'render.circle_gradient(center, outer, inner, radius)', desc: 'Draws a radial gradient circle.', params: [{name:'center',type:'vector'},{name:'outer',type:'color'},{name:'inner',type:'color'},{name:'radius',type:'float'}] },
+        { name: 'circle_3d', sig: 'render.circle_3d(center, color, radius)', desc: 'Draws a 3D circle (filled).', params: [{name:'center',type:'vector'},{name:'color',type:'color'},{name:'radius',type:'float'}] },
+        { name: 'circle_3d_outline', sig: 'render.circle_3d_outline(center, color, radius)', desc: 'Draws a 3D circle outline.', params: [{name:'center',type:'vector'},{name:'color',type:'color'},{name:'radius',type:'float'}] },
+        { name: 'texture', sig: 'render.texture(image, pos, [color])', desc: 'Draws an image.', params: [{name:'image',type:'image_t'},{name:'pos',type:'vector'},{name:'color',type:'color',opt:true}] },
+        { name: 'text', sig: 'render.text(font, pos, color, flags, text)', desc: 'Draws text. flags: c=center, o=outline, d=dropshadow', params: [{name:'font',type:'int|D3DXFont*'},{name:'pos',type:'vector'},{name:'color',type:'color'},{name:'flags',type:'string'},{name:'text',type:'string'}] },
+        { name: 'measure_text', sig: 'render.measure_text(font, text)', desc: 'Returns text size as vector.', params: [{name:'font',type:'int|D3DXFont*'},{name:'text',type:'string'}] },
+        { name: 'vertex', sig: 'render.vertex(draw_type, ...vertices)', desc: 'Draws custom vertices.', params: [{name:'draw_type',type:'int'},{name:'...',type:'vertex'}] },
+        { name: 'push_clip_rect', sig: 'render.push_clip_rect(start, end)', desc: 'Pushes a clip rectangle.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'}] },
+        { name: 'pop_clip_rect', sig: 'render.pop_clip_rect()', desc: 'Pops the last clip rectangle.', params: [] },
+        { name: 'world_to_screen', sig: 'render.world_to_screen(world_pos)', desc: 'Converts 3D world position to 2D screen.', params: [{name:'world_pos',type:'vector'}] }
+      ]
+    },
+    common: {
+      desc: 'General utility functions.',
+      functions: [
+        { name: 'get_map_name', sig: 'common.get_map_name()', desc: 'Returns full map name.', params: [] },
+        { name: 'get_map_shortname', sig: 'common.get_map_shortname()', desc: 'Returns short map name.', params: [] },
+        { name: 'get_local_time', sig: 'common.get_local_time()', desc: 'Returns system time as systime_t.', params: [] },
+        { name: 'get_unix_time', sig: 'common.get_unix_time()', desc: 'Returns Unix timestamp.', params: [] },
+        { name: 'is_recording_voice', sig: 'common.is_recording_voice()', desc: 'Returns true if voice is being recorded.', params: [] }
+      ]
+    },
+    files: {
+      desc: 'File system operations.',
+      functions: [
+        { name: 'read', sig: 'files.read(path)', desc: 'Reads a file and returns content.', params: [{name:'path',type:'string'}] },
+        { name: 'write', sig: 'files.write(path, data)', desc: 'Writes data to a file (overwrites).', params: [{name:'path',type:'string'},{name:'data',type:'string'}] },
+        { name: 'create_folder', sig: 'files.create_folder(path)', desc: 'Creates a directory (recursive).', params: [{name:'path',type:'string'}] },
+        { name: 'exists', sig: 'files.exists(path)', desc: 'Returns true if file or directory exists.', params: [{name:'path',type:'string'}] },
+        { name: 'delete_file', sig: 'files.delete_file(path)', desc: 'Deletes a file.', params: [{name:'path',type:'string'}] },
+        { name: 'list_dir', sig: 'files.list_dir(path)', desc: 'Returns a table of filenames in a directory.', params: [{name:'path',type:'string'}] },
+        { name: 'is_directory', sig: 'files.is_directory(path)', desc: 'Returns true if path is a directory.', params: [{name:'path',type:'string'}] },
+        { name: 'file_size', sig: 'files.file_size(path)', desc: 'Returns file size in bytes.', params: [{name:'path',type:'string'}] }
+      ]
+    },
+    json: {
+      desc: 'JSON parsing and serialization.',
+      functions: [
+        { name: 'stringify', sig: 'json.stringify(table)', desc: 'Converts a Lua table to JSON string.', params: [{name:'table',type:'table'}] },
+        { name: 'parse', sig: 'json.parse(data)', desc: 'Parses a JSON string into a Lua table.', params: [{name:'data',type:'string'}] }
+      ]
+    },
+    utils: {
+      desc: 'Various utilities.',
+      functions: [
+        { name: 'random_seed', sig: 'utils.random_seed(seed)', desc: 'Seeds the random number generator.', params: [{name:'seed',type:'int'}] },
+        { name: 'random_int', sig: 'utils.random_int(min, max)', desc: 'Returns a random integer.', params: [{name:'min',type:'int'},{name:'max',type:'int'}] },
+        { name: 'random_float', sig: 'utils.random_float(min, max)', desc: 'Returns a random float.', params: [{name:'min',type:'float'},{name:'max',type:'float'}] },
+        { name: 'console_exec', sig: 'utils.console_exec(command)', desc: 'Executes a console command.', params: [{name:'command',type:'string'}] },
+        { name: 'create_interface', sig: 'utils.create_interface(module, interface)', desc: 'Creates an interface from a module.', params: [{name:'module',type:'string'},{name:'interface',type:'string'}] },
+        { name: 'pattern_scan', sig: 'utils.pattern_scan(module, pattern)', desc: 'Scans a module for a pattern.', params: [{name:'module',type:'string'},{name:'pattern',type:'string'}] },
+        { name: 'trace_line', sig: 'utils.trace_line(start, end, mask, filter)', desc: 'Traces a line. Filter can be function or entity_t.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'mask',type:'int'},{name:'filter',type:'function|entity_t'}] },
+        { name: 'trace_hull', sig: 'utils.trace_hull(start, end, mins, maxs, mask, filter)', desc: 'Traces a hull.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'mins',type:'vector'},{name:'maxs',type:'vector'},{name:'mask',type:'int'},{name:'filter',type:'function|entity_t'}] },
+        { name: 'trace_bullet', sig: 'utils.trace_bullet(attacker, start, end, [target])', desc: 'Traces a bullet with damage calculation. Returns fire_bullet_t.', params: [{name:'attacker',type:'player_t'},{name:'start',type:'vector'},{name:'end',type:'vector'},{name:'target',type:'player_t',opt:true}] },
+        { name: 'get_model_index', sig: 'utils.get_model_index(model)', desc: 'Returns model index by name.', params: [{name:'model',type:'string'}] },
+        { name: 'precache_model', sig: 'utils.precache_model(model)', desc: 'Precaches a model.', params: [{name:'model',type:'string'}] },
+        { name: 'set_clantag', sig: 'utils.set_clantag(tag)', desc: 'Sets the clantag.', params: [{name:'tag',type:'string'}] },
+        { name: 'get_net_channel', sig: 'utils.get_net_channel()', desc: 'Returns the net channel info.', params: [] },
+        { name: 'is_key_pressed', sig: 'utils.is_key_pressed(key)', desc: 'Returns true if key is held.', params: [{name:'key',type:'int'}] },
+        { name: 'get_mouse_position', sig: 'utils.get_mouse_position()', desc: 'Returns mouse position as vector.', params: [] },
+        { name: 'send_voice_message', sig: 'utils.send_voice_message(data)', desc: 'Sends a voice data packet.', params: [{name:'data',type:'voice_data'}] }
+      ]
+    },
+    network: {
+      desc: 'HTTP requests.',
+      functions: [
+        { name: 'get', sig: 'network.get(url, [headers], [callback])', desc: 'Performs a GET request (async if callback provided).', params: [{name:'url',type:'string'},{name:'headers',type:'table',opt:true},{name:'callback',type:'function',opt:true}] },
+        { name: 'post', sig: 'network.post(url, [body], [headers], [callback])', desc: 'Performs a POST request.', params: [{name:'url',type:'string'},{name:'body',type:'string',opt:true},{name:'headers',type:'table',opt:true},{name:'callback',type:'function',opt:true}] }
+      ]
+    },
+    rage: {
+      desc: 'Ragebot and Anti-Aim functions.',
+      functions: [
+        { name: 'get_antiaim_target', sig: 'rage.get_antiaim_target()', desc: 'Returns the current Anti-Aim target.', params: [] },
+        { name: 'get_exploit_charge', sig: 'rage.get_exploit_charge()', desc: 'Returns tickbase exploit charge (0-1).', params: [] },
+        { name: 'is_defensive_active', sig: 'rage.is_defensive_active()', desc: 'Returns true if defensive mode is active.', params: [] },
+        { name: 'get_defensive_ticks', sig: 'rage.get_defensive_ticks()', desc: 'Returns defensive tick count.', params: [] },
+        { name: 'force_teleport', sig: 'rage.force_teleport()', desc: 'Forces a teleport in tickbase manipulation.', params: [] },
+        { name: 'force_charge', sig: 'rage.force_charge()', desc: 'Forces charging of tickbase.', params: [] },
+        { name: 'is_shifting', sig: 'rage.is_shifting()', desc: 'Returns true if tickbase is shifting.', params: [] },
+        { name: 'override_tickbase_shift', sig: 'rage.override_tickbase_shift(ticks)', desc: 'Overrides the tickbase shift amount.', params: [{name:'ticks',type:'int'}] },
+        { name: 'get_antiaim_yaw', sig: 'rage.get_antiaim_yaw()', desc: 'Returns current Anti-Aim yaw.', params: [] },
+        { name: 'is_peeking', sig: 'rage.is_peeking()', desc: 'Returns true if peeking.', params: [] }
+      ]
+    },
+    materials: {
+      desc: 'Material system.',
+      functions: [
+        { name: 'create', sig: 'materials.create(name, mattype, kv)', desc: 'Creates a new material.', params: [{name:'name',type:'string'},{name:'mattype',type:'string'},{name:'kv',type:'table'}] },
+        { name: 'find', sig: 'materials.find(name)', desc: 'Finds a material by name.', params: [{name:'name',type:'string'}] },
+        { name: 'draw_chams', sig: 'materials.draw_chams(material)', desc: 'Draws chams with the given material.', params: [{name:'material',type:'material_t'}] }
+      ]
+    },
+    panorama: {
+      desc: 'Panorama UI system.',
+      functions: [
+        { name: 'load_string', sig: 'panorama.load_string(js_code, [context_panel])', desc: 'Loads JavaScript into Panorama.', params: [{name:'js_code',type:'string'},{name:'context_panel',type:'string',opt:true}] },
+        { name: 'open', sig: 'panorama.open([panel_name])', desc: 'Opens a Panorama panel.', params: [{name:'panel_name',type:'string',opt:true}] }
+      ]
+    }
+  },
+  types: {
+    color: {
+      desc: 'RGBA color with 0-255 channels.',
+      methods: [
+        { name: 'new', sig: 'color([r], [g], [b], [a])', desc: 'Creates a new color.', params: [{name:'r',type:'int',opt:true},{name:'g',type:'int',opt:true},{name:'b',type:'int',opt:true},{name:'a',type:'int',opt:true}] },
+        { name: 'as_int32', sig: 'c:as_int32()', desc: 'Returns color as 32-bit integer.', params: [] },
+        { name: 'as_fraction', sig: 'c:as_fraction()', desc: 'Returns normalized (0-1) components.', params: [] },
+        { name: 'alpha_modulate', sig: 'c:alpha_modulate(alpha)', desc: 'Modulates alpha channel.', params: [{name:'alpha',type:'int'}] },
+        { name: 'lerp', sig: 'c:lerp(other, t)', desc: 'Linear interpolates between colors.', params: [{name:'other',type:'color'},{name:'t',type:'float'}] },
+        { name: 'clone', sig: 'c:clone()', desc: 'Returns a copy of the color.', params: [] }
+      ],
+      props: ['r','g','b','a']
+    },
+    vector: {
+      desc: '3D vector with x,y,z components.',
+      methods: [
+        { name: 'new', sig: 'vector([x], [y], [z])', desc: 'Creates a new vector.', params: [{name:'x',type:'float',opt:true},{name:'y',type:'float',opt:true},{name:'z',type:'float',opt:true}] },
+        { name: 'length', sig: 'v:length()', desc: 'Returns vector length.', params: [] },
+        { name: 'length_sqr', sig: 'v:length_sqr()', desc: 'Returns squared length.', params: [] },
+        { name: 'dot', sig: 'v:dot(other)', desc: 'Returns dot product.', params: [{name:'other',type:'vector'}] },
+        { name: 'cross', sig: 'v:cross(other)', desc: 'Returns cross product.', params: [{name:'other',type:'vector'}] },
+        { name: 'dist', sig: 'v:dist(other)', desc: 'Returns distance to other vector.', params: [{name:'other',type:'vector'}] },
+        { name: 'lerp', sig: 'v:lerp(other, t)', desc: 'Linear interpolates.', params: [{name:'other',type:'vector'},{name:'t',type:'float'}] },
+        { name: 'angles', sig: 'v:angles([angle])', desc: 'Gets or sets angles from vector.', params: [{name:'angle',type:'qangle',opt:true}] },
+        { name: 'to_screen', sig: 'v:to_screen()', desc: 'Converts world position to screen.', params: [] },
+        { name: 'closest_ray_point', sig: 'v:closest_ray_point(start, end)', desc: 'Returns closest point on ray.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'}] },
+        { name: 'dist_to_ray', sig: 'v:dist_to_ray(start, end)', desc: 'Returns distance to ray.', params: [{name:'start',type:'vector'},{name:'end',type:'vector'}] }
+      ],
+      props: ['x','y','z']
+    },
+    qangle: {
+      desc: 'Euler angles (pitch, yaw, roll).',
+      methods: [
+        { name: 'new', sig: 'qangle([pitch], [yaw], [roll])', desc: 'Creates a new qangle.', params: [{name:'pitch',type:'float',opt:true},{name:'yaw',type:'float',opt:true},{name:'roll',type:'float',opt:true}] }
+      ],
+      props: ['pitch','yaw','roll']
+    },
+    player_t: {
+      desc: 'Player entity (inherits entity_t).',
+      methods: [
+        { name: 'get_name', sig: 'player:get_name()', desc: 'Returns player name.', params: [] },
+        { name: 'get_active_weapon', sig: 'player:get_active_weapon()', desc: 'Returns current weapon.', params: [] },
+        { name: 'is_alive', sig: 'player:is_alive()', desc: 'Returns true if alive.', params: [] },
+        { name: 'is_enemy', sig: 'player:is_enemy()', desc: 'Returns true if enemy.', params: [] },
+        { name: 'is_bot', sig: 'player:is_bot()', desc: 'Returns true if bot.', params: [] },
+        { name: 'is_dormant', sig: 'player:is_dormant()', desc: 'Returns true if dormant.', params: [] },
+        { name: 'get_player_info', sig: 'player:get_player_info()', desc: 'Returns player_info_t.', params: [] },
+        { name: 'get_eye_position', sig: 'player:get_eye_position()', desc: 'Returns eye position.', params: [] },
+        { name: 'get_bone_position', sig: 'player:get_bone_position(bone)', desc: 'Returns bone position.', params: [{name:'bone',type:'int'}] },
+        { name: 'get_hitbox_position', sig: 'player:get_hitbox_position(hb)', desc: 'Returns hitbox center.', params: [{name:'hb',type:'int'}] },
+        { name: 'get_animstate', sig: 'player:get_animstate()', desc: 'Returns animation state.', params: [] },
+        { name: 'get_animlayers', sig: 'player:get_animlayers()', desc: 'Returns array of animation layers.', params: [] },
+        { name: 'get_simulation_time', sig: 'player:get_simulation_time()', desc: 'Returns simulation times.', params: [] },
+        { name: 'get_bounding_box', sig: 'player:get_bounding_box()', desc: 'Returns 2D bounding box (mins, maxs).', params: [] },
+        { name: 'set_icon', sig: 'player:set_icon(icon)', desc: 'Sets an icon on the player.', params: [{name:'icon',type:'image_t'}] },
+        { name: 'get_health', sig: 'player:get_health()', desc: 'Returns health.', params: [] },
+        { name: 'get_armor', sig: 'player:get_armor()', desc: 'Returns armor.', params: [] },
+        { name: 'has_helmet', sig: 'player:has_helmet()', desc: 'Returns true if has helmet.', params: [] },
+        { name: 'get_flags', sig: 'player:get_flags()', desc: 'Returns entity flags.', params: [] },
+        { name: 'get_velocity', sig: 'player:get_velocity()', desc: 'Returns velocity.', params: [] },
+        { name: 'get_eye_angles', sig: 'player:get_eye_angles()', desc: 'Returns eye angles.', params: [] },
+        { name: 'get_team', sig: 'player:get_team()', desc: 'Returns team number.', params: [] },
+        { name: 'is_defusing', sig: 'player:is_defusing()', desc: 'Returns true if defusing.', params: [] }
+      ]
+    },
+    weapon_t: {
+      desc: 'Weapon entity (inherits entity_t).',
+      methods: [
+        { name: 'weapon_index', sig: 'weapon:weapon_index()', desc: 'Returns item definition index.', params: [] },
+        { name: 'get_inaccuracy', sig: 'weapon:get_inaccuracy()', desc: 'Returns inaccuracy.', params: [] },
+        { name: 'get_spread', sig: 'weapon:get_spread()', desc: 'Returns spread.', params: [] },
+        { name: 'shooting_weapon', sig: 'weapon:shooting_weapon()', desc: 'Returns true if shooting.', params: [] },
+        { name: 'can_shoot', sig: 'weapon:can_shoot()', desc: 'Returns true if can shoot.', params: [] },
+        { name: 'get_icon', sig: 'weapon:get_icon()', desc: 'Returns weapon icon.', params: [] },
+        { name: 'is_grenade', sig: 'weapon:is_grenade()', desc: 'Returns true if grenade.', params: [] },
+        { name: 'is_knife', sig: 'weapon:is_knife()', desc: 'Returns true if knife.', params: [] },
+        { name: 'get_weapon_info', sig: 'weapon:get_weapon_info()', desc: 'Returns weapon info.', params: [] }
+      ]
+    },
+    material_t: {
+      desc: 'Material object.',
+      methods: [
+        { name: 'get_name', sig: 'mat:get_name()', desc: 'Returns material name.', params: [] },
+        { name: 'color_modulate', sig: 'mat:color_modulate([color])', desc: 'Gets or sets color modulation.', params: [{name:'color',type:'color',opt:true}] },
+        { name: 'alpha_modulate', sig: 'mat:alpha_modulate([alpha])', desc: 'Gets or sets alpha modulation.', params: [{name:'alpha',type:'float',opt:true}] },
+        { name: 'var_flag', sig: 'mat:var_flag(flag, [value])', desc: 'Gets or sets material var flag.', params: [{name:'flag',type:'uint'},{name:'value',type:'bool',opt:true}] },
+        { name: 'increment_ref_count', sig: 'mat:increment_ref_count()', desc: 'Increments reference count.', params: [] },
+        { name: 'decrement_ref_count', sig: 'mat:decrement_ref_count()', desc: 'Decrements reference count.', params: [] }
+      ]
+    },
+    trace_t: {
+      desc: 'Ray trace result.',
+      props: ['startpos','endpos','fraction','allsolid','startsolid','hit_entity','hitgroup']
+    },
+    fire_bullet_t: {
+      desc: 'Bullet trace result.',
+      props: ['damage','trace']
+    },
+    lag_record_t: {
+      desc: 'Lag compensation record.',
+      props: ['player','origin','velocity','mins','maxs','abs_angles','view_angles','simulation_time','duck_amount','duck_speed','choked_ticks','shifting_tickbase','breaking_lag_compensation']
+    },
+    shot_t: {
+      desc: 'Registered shot information.',
+      props: ['client_shoot_pos','target_pos','client_angle','command_number','wanted_damage','wanted_damagegroup','hitchance','backtrack','record','shoot_pos','end_pos','angle','impacts','damage','damagegroup','hit_point','acked','miss_reason']
+    },
+    user_cmd_t: {
+      desc: 'User command.',
+      props: ['command_number','tickcount','move','viewangles','buttons','random_seed','override_defensive','allow_defensive'],
+      methods: [
+        { name: 'set_move', sig: 'cmd:set_move(yaw, [speed])', desc: 'Sets movement direction.', params: [{name:'yaw',type:'float'},{name:'speed',type:'float',opt:true}] }
+      ]
+    },
+    animstate_t: {
+      desc: 'Animation state.',
+      props: ['entity','active_weapon','last_active_weapon','last_update_time','last_update_frame','last_update_increment','eye_yaw','eye_pitch','foot_yaw','last_foot_yaw','move_yaw','move_yaw_ideal','move_yaw_current_to_ideal','primary_cycle','move_weight','move_weight_smoothed','duck_amount','duck_additional','recrouch_weight','origin','last_origin','velocity','velocity_normalized','velocity_normalized_non_zero','velocity_length_2d','velocity_z','speed_normalized','running_speed','ducking_speed','duration_moving','duration_still','on_ground','landing','duration_in_air','left_ground_height','hit_ground_weight','walk_to_run_transition','in_air_smooth_value','min_aim_yaw','max_aim_yaw','min_pitch','max_pitch','animset_version']
+    },
+    animlayer_t: {
+      desc: 'Animation layer.',
+      props: ['client_blend','layer_fade_out','dispatched_studio_hdr','dispatched_src','dispatched_dest','order','sequence','prev_cycle','weight','weight_delta_rate','playback_rate','cycle','owner']
+    },
+    game_event_t: {
+      desc: 'Game event.',
+      methods: [
+        { name: 'get_name', sig: 'event:get_name()', desc: 'Returns event name.', params: [] },
+        { name: 'get_int', sig: 'event:get_int(key)', desc: 'Returns int value.', params: [{name:'key',type:'string'}] },
+        { name: 'get_float', sig: 'event:get_float(key)', desc: 'Returns float value.', params: [{name:'key',type:'string'}] },
+        { name: 'get_bool', sig: 'event:get_bool(key)', desc: 'Returns bool value.', params: [{name:'key',type:'string'}] },
+        { name: 'get_string', sig: 'event:get_string(key)', desc: 'Returns string value.', params: [{name:'key',type:'string'}] }
+      ]
+    },
+    convar: {
+      desc: 'Console variable.',
+      methods: [
+        { name: 'get_name', sig: 'cvar:get_name()', desc: 'Returns cvar name.', params: [] },
+        { name: 'int', sig: 'cvar:int([new])', desc: 'Gets or sets int value.', params: [{name:'new',type:'int',opt:true}] },
+        { name: 'float', sig: 'cvar:float([new])', desc: 'Gets or sets float value.', params: [{name:'new',type:'float',opt:true}] },
+        { name: 'string', sig: 'cvar:string([new])', desc: 'Gets or sets string value.', params: [{name:'new',type:'string',opt:true}] },
+        { name: 'add_flag', sig: 'cvar:add_flag(flag)', desc: 'Adds a flag.', params: [{name:'flag',type:'int'}] },
+        { name: 'remove_flag', sig: 'cvar:remove_flag(flag)', desc: 'Removes a flag.', params: [{name:'flag',type:'int'}] }
+      ],
+      props: ['description','flags','parent','default','has_min','has_max','min','max']
+    },
+    image_t: {
+      desc: 'Image/texture object.',
+      props: ['width','height']
+    },
+    player_info_t: {
+      desc: 'Player information.',
+      props: ['steamID64','xuid_low','xuid_high','name','userid','szSteamID','steamID','bot']
+    },
+    ui_element_t: {
+      desc: 'UI element widget.',
+      methods: [
+        { name: 'set_callback', sig: 'elem:set_callback(func)', desc: 'Sets Lua callback for changes.', params: [{name:'func',type:'function'}] },
+        { name: 'visible', sig: 'elem:visible(bool)', desc: 'Sets visibility.', params: [{name:'bool',type:'bool'}] },
+        { name: 'type', sig: 'elem:type()', desc: 'Returns WidgetType enum.', params: [] },
+        { name: 'get_name', sig: 'elem:get_name()', desc: 'Returns element name.', params: [] },
+        { name: 'get_mode', sig: 'elem:get_mode()', desc: 'Returns keybind mode.', params: [] },
+        { name: 'get_key', sig: 'elem:get_key()', desc: 'Returns keybind key.', params: [] },
+        { name: 'get', sig: 'elem:get([index])', desc: 'Gets value.', params: [{name:'index',type:'int',opt:true}] },
+        { name: 'set', sig: 'elem:set(value, [index])', desc: 'Sets value.', params: [{name:'value',type:'any'},{name:'index',type:'int',opt:true}] },
+        { name: 'update_list', sig: 'elem:update_list(list)', desc: 'Updates combo list.', params: [{name:'list',type:'table'}] }
+      ]
+    },
+    groupbox_t: {
+      desc: 'Groupbox container for UI elements.',
+      methods: [
+        { name: 'checkbox', sig: 'gb:checkbox(name, [default])', desc: 'Adds a checkbox.', params: [{name:'name',type:'string'},{name:'default',type:'bool',opt:true}] },
+        { name: 'label', sig: 'gb:label(name)', desc: 'Adds a label.', params: [{name:'name',type:'string'}] },
+        { name: 'color_picker', sig: 'gb:color_picker(name, [default])', desc: 'Adds a color picker.', params: [{name:'name',type:'string'},{name:'default',type:'color',opt:true}] },
+        { name: 'keybind', sig: 'gb:keybind(name)', desc: 'Adds a keybind.', params: [{name:'name',type:'string'}] },
+        { name: 'slider_int', sig: 'gb:slider_int(name, min, max, default, [format])', desc: 'Adds an int slider.', params: [{name:'name',type:'string'},{name:'min',type:'int'},{name:'max',type:'int'},{name:'default',type:'int'},{name:'format',type:'string',opt:true}] },
+        { name: 'slider_float', sig: 'gb:slider_float(name, min, max, default, [format])', desc: 'Adds a float slider.', params: [{name:'name',type:'string'},{name:'min',type:'float'},{name:'max',type:'float'},{name:'default',type:'float'},{name:'format',type:'string',opt:true}] },
+        { name: 'combo', sig: 'gb:combo(name, ...)', desc: 'Adds a combo box.', params: [{name:'name',type:'string'},{name:'...',type:'string'}] },
+        { name: 'multicombo', sig: 'gb:multicombo(name, ...)', desc: 'Adds a multi-combo box.', params: [{name:'name',type:'string'},{name:'...',type:'string'}] },
+        { name: 'input', sig: 'gb:input(name)', desc: 'Adds an input box.', params: [{name:'name',type:'string'}] },
+        { name: 'button', sig: 'gb:button(name)', desc: 'Adds a button.', params: [{name:'name',type:'string'}] }
+      ]
+    }
+  },
+  stdlibs: {
+    vector: {
+      desc: 'Vector math utilities (from StdLib.h)',
+      functions: [
+        { name: 'new', sig: 'vector.new([x],[y],[z])', desc: 'Creates a vector.', example: 'local v = vector.new(10, 20, 30)' },
+        { name: 'zero', sig: 'vector.zero()', desc: 'Returns zero vector.', example: 'local origin = vector.zero()' },
+        { name: 'forward', sig: 'vector.forward()', desc: 'Returns forward vector (1,0,0).', example: 'local dir = vector.forward()' },
+        { name: 'right', sig: 'vector.right()', desc: 'Returns right vector (0,1,0).', example: 'local right = vector.right()' },
+        { name: 'up', sig: 'vector.up()', desc: 'Returns up vector (0,0,1).', example: 'local up = vector.up()' },
+        { name: 'normalize', sig: 'vector.normalize(v)', desc: 'Normalizes vector.', example: 'local norm = vector.normalize(vector(3,4,0)) -- returns (0.6,0.8,0)' },
+        { name: 'length2d', sig: 'vector.length2d(v)', desc: 'Returns 2D length (ignores z).', example: 'local len2d = vector.length2d(vector(3,4,5)) -- returns 5' },
+        { name: 'clamp_length', sig: 'vector.clamp_length(v, max)', desc: 'Clamps vector length to max.', example: 'local clamped = vector.clamp_length(vector(10,0,0), 5) -- returns (5,0,0)' },
+        { name: 'lerp', sig: 'vector.lerp(a,b,t)', desc: 'Linear interpolates between vectors.', example: 'local mid = vector.lerp(vector(0,0,0), vector(10,10,10), 0.5) -- returns (5,5,5)' },
+        { name: 'angle_between', sig: 'vector.angle_between(a,b)', desc: 'Angle in degrees between two vectors.', example: 'local angle = vector.angle_between(vector(1,0,0), vector(0,1,0)) -- returns 90' },
+        { name: 'reflect', sig: 'vector.reflect(v, normal)', desc: 'Reflects vector off a surface normal.', example: 'local reflected = vector.reflect(vector(0,-1,0), vector(0,1,0)) -- returns (0,1,0)' },
+        { name: 'project', sig: 'vector.project(a,b)', desc: 'Projects vector a onto vector b.', example: 'local proj = vector.project(vector(5,5,0), vector(1,0,0)) -- returns (5,0,0)' },
+        { name: 'distance', sig: 'vector.distance(a,b)', desc: '3D distance between two vectors.', example: 'local dist = vector.distance(vector(0,0,0), vector(3,4,0)) -- returns 5' },
+        { name: 'distance2d', sig: 'vector.distance2d(a,b)', desc: '2D distance (ignores z).', example: 'local dist2d = vector.distance2d(vector(0,0,0), vector(3,4,5)) -- returns 5' },
+        { name: 'rotate2d', sig: 'vector.rotate2d(v, degrees)', desc: 'Rotates vector in 2D (XY plane).', example: 'local rotated = vector.rotate2d(vector(1,0,0), 90) -- returns (0,1,0)' },
+        { name: 'approx_equal', sig: 'vector.approx_equal(a,b, [eps])', desc: 'Approximate equality check.', example: 'local eq = vector.approx_equal(vector(0.001,0,0), vector(0,0,0), 0.01) -- returns true' },
+        { name: 'unpack', sig: 'vector.unpack(v)', desc: 'Returns x,y,z as separate values.', example: 'local x, y, z = vector.unpack(vector(1,2,3))' }
+      ]
+    },
+    color: {
+      desc: 'Color utilities (StdLib)',
+      functions: [
+        { name: 'new', sig: 'color.new([r],[g],[b],[a])', desc: 'Creates color.', example: 'local c = color.new(255, 128, 0)' },
+        { name: 'from_float', sig: 'color.from_float(r,g,b,[a])', desc: 'From normalized 0-1 values.', example: 'local c = color.from_float(1, 0.5, 0)' },
+        { name: 'to_float', sig: 'color.to_float(c)', desc: 'Returns normalized components.', example: 'local r,g,b,a = color.to_float(color.red)' },
+        { name: 'from_hsv', sig: 'color.from_hsv(h,s,v,[a])', desc: 'Creates from HSV.', example: 'local c = color.from_hsv(180, 1, 0.5)' },
+        { name: 'to_hsv', sig: 'color.to_hsv(c)', desc: 'Returns HSV.', example: 'local h,s,v = color.to_hsv(color.cyan)' },
+        { name: 'from_hex', sig: 'color.from_hex(hex)', desc: 'Creates from hex string.', example: 'local c = color.from_hex("#FF8800")' },
+        { name: 'to_hex', sig: 'color.to_hex(c, [alpha])', desc: 'Returns hex string.', example: 'local hex = color.to_hex(color.orange) -- "#FFA500"' },
+        { name: 'lerp', sig: 'color.lerp(a,b,t)', desc: 'Interpolates colors.', example: 'local mid = color.lerp(color.red, color.blue, 0.5)' },
+        { name: 'with_alpha', sig: 'color.with_alpha(c,a)', desc: 'Sets alpha.', example: 'local semi = color.with_alpha(color.white, 128)' },
+        { name: 'lighten', sig: 'color.lighten(c, amount)', desc: 'Lightens color.', example: 'local lighter = color.lighten(color.blue, 0.3)' },
+        { name: 'darken', sig: 'color.darken(c, amount)', desc: 'Darkens color.', example: 'local darker = color.darken(color.blue, 0.3)' },
+        { name: 'rainbow', sig: 'color.rainbow([speed],[offset])', desc: 'Returns rainbow color.', example: 'local c = color.rainbow(0.5, 0) -- cycles over time' }
+      ],
+      constants: ['white','black','red','green','blue','yellow','cyan','magenta','orange','purple']
+    },
+    timer: {
+      desc: 'Timer system (StdLib)',
+      functions: [
+        { name: 'clock', sig: 'timer.clock()', desc: 'Returns current time from os.clock.', example: 'local t = timer.clock()' },
+        { name: 'after', sig: 'timer.after(delay, callback)', desc: 'Runs callback once after delay.', example: 'timer.after(2, function() print("2 seconds passed") end)' },
+        { name: 'every', sig: 'timer.every(interval, callback, [immediate])', desc: 'Runs callback repeatedly.', example: 'timer.every(1, function() print("tick") end)' },
+        { name: 'cancel', sig: 'timer.cancel(id)', desc: 'Cancels a timer.', example: 'local id = timer.after(10, function() end)\ntimer.cancel(id)' },
+        { name: 'cancel_all', sig: 'timer.cancel_all()', desc: 'Cancels all timers.', example: 'timer.cancel_all()' },
+        { name: 'count', sig: 'timer.count()', desc: 'Returns active timer count.', example: 'local n = timer.count()' },
+        { name: 'update', sig: 'timer.update()', desc: 'Updates timers (call each frame).', example: '-- Inside render callback:\nclient.add_callback("render", function() timer.update() end)' },
+        { name: 'stopwatch', sig: 'timer.stopwatch()', desc: 'Creates a stopwatch object.', example: 'local sw = timer.stopwatch()\nsw:start()\n-- ... do something\nprint(sw:elapsed())' },
+        { name: 'damp', sig: 'timer.damp(current, target, speed, dt)', desc: 'Damps a value toward target.', example: 'local value = timer.damp(0, 100, 0.5, 0.016)' }
+      ]
+    },
+    ease: {
+      desc: 'Easing functions (StdLib)',
+      functions: [
+        'linear', 'in_quad', 'out_quad', 'in_out_quad',
+        'in_cubic', 'out_cubic', 'in_out_cubic',
+        'in_quart', 'out_quart', 'in_out_quart',
+        'in_quint', 'out_quint', 'in_out_quint',
+        'in_sine', 'out_sine', 'in_out_sine',
+        'in_expo', 'out_expo', 'in_out_expo',
+        'in_circ', 'out_circ', 'in_out_circ',
+        'in_back', 'out_back', 'in_out_back',
+        'in_elastic', 'out_elastic', 'in_out_elastic',
+        'in_bounce', 'out_bounce', 'in_out_bounce',
+        { name: 'apply', sig: 'ease.apply(fn, from, to, t)', desc: 'Applies easing function to value range.', example: 'local val = ease.apply(ease.in_out_quad, 0, 100, 0.5) -- returns 50' }
+      ]
+    },
+    animate: {
+      desc: 'Animation system (StdLib)',
+      functions: [
+        { name: 'new', sig: 'animate.new(from,to,duration,easing,on_update,on_complete)', desc: 'Creates an animation.', example: 'animate.new(0, 100, 1, ease.linear, function(v) print(v) end)' },
+        { name: 'loop', sig: 'animate.loop(from,to,duration,easing,on_update)', desc: 'Creates a looping animation.', example: 'animate.loop(0, 100, 2, ease.in_out_quad, function(v) print(v) end)' },
+        { name: 'pause', sig: 'animate.pause(id)', desc: 'Pauses animation.', example: 'local id = animate.new(0,100,1, ease.linear, function() end)\nanimate.pause(id)' },
+        { name: 'resume', sig: 'animate.resume(id)', desc: 'Resumes animation.', example: 'animate.resume(id)' },
+        { name: 'cancel', sig: 'animate.cancel(id)', desc: 'Cancels animation.', example: 'animate.cancel(id)' },
+        { name: 'cancel_all', sig: 'animate.cancel_all()', desc: 'Cancels all animations.', example: 'animate.cancel_all()' },
+        { name: 'is_running', sig: 'animate.is_running(id)', desc: 'Returns true if running.', example: 'if animate.is_running(id) then print("running") end' },
+        { name: 'get_value', sig: 'animate.get_value(id)', desc: 'Returns current value.', example: 'local val = animate.get_value(id)' },
+        { name: 'update', sig: 'animate.update()', desc: 'Updates animations (call each frame).', example: '-- Inside render callback:\nclient.add_callback("render", function() animate.update() end)' },
+        { name: 'count', sig: 'animate.count()', desc: 'Returns active animation count.', example: 'local n = animate.count()' }
+      ]
+    },
+    class: {
+      desc: 'Class/OOP system (StdLib)',
+      functions: [
+        { name: 'new', sig: 'class([parent])', desc: 'Creates a new class.', example: 'local MyClass = class()\nfunction MyClass:init(name) self.name = name end' },
+        { name: 'mixin', sig: 'class.mixin(cls, ...)', desc: 'Mixes in tables to class.', example: 'local LogMixin = { log = function() print("log") end }\nclass.mixin(MyClass, LogMixin)' }
+      ]
+    }
+  },
+  events: [
+    { name: 'render', desc: 'Called each frame for rendering.', params: [], example: 'client.add_callback("render", function()\n    render.text(1, vector(10,10), color(255,255,255), "", "Hello")\nend)' },
+    { name: 'createmove', desc: 'Called before creating a movement command.', params: [{name:'cmd',type:'user_cmd_t'}], example: 'client.add_callback("createmove", function(cmd)\n    -- Make the player move forward\n    cmd.viewangles.pitch = 0\n    cmd:set_move(0, 250)\nend)' },
+    { name: 'antiaim', desc: 'Called during Anti-Aim calculation.', params: [{name:'ctx',type:'antiaim_context_t'}], example: 'client.add_callback("antiaim", function(ctx)\n    ctx.yaw = 180\n    ctx.pitch = -89\nend)' },
+    { name: 'level_init', desc: 'Called when a level is initialized.', params: [], example: 'client.add_callback("level_init", function()\n    print("New level loaded!")\nend)' },
+    { name: 'aim_shot', desc: 'Called when a shot is fired.', params: [{name:'shot',type:'shot_t'}], example: 'client.add_callback("aim_shot", function(shot)\n    print("Shot fired at: " .. shot.target_pos)\nend)' },
+    { name: 'aim_ack', desc: 'Called when a shot is acknowledged.', params: [{name:'shot',type:'shot_t'}], example: 'client.add_callback("aim_ack", function(shot)\n    if shot.acked then print("Shot confirmed!") end\nend)' },
+    { name: 'frame_stage', desc: 'Called on each frame stage.', params: [], example: 'client.add_callback("frame_stage", function()\n    -- Called every frame stage\nend)' },
+    { name: 'game_events', desc: 'Called for game events.', params: [{name:'event',type:'game_event_t'}], example: 'client.add_callback("game_events", function(event)\n    if event:get_name() == "player_death" then\n        print("Player died!")\n    end\nend)' },
+    { name: 'unload', desc: 'Called when the script is unloaded.', params: [], example: 'client.add_callback("unload", function()\n    print("Script unloading, cleaning up...")\nend)' },
+    { name: 'voice_message', desc: 'Called when voice data is received.', params: [{name:'data',type:'recv_voice_data_t'}], example: 'client.add_callback("voice_message", function(data)\n    print("Voice from client: " .. data.client)\nend)' },
+    { name: 'pre_anim_update', desc: 'Called before animation update.', params: [], example: 'client.add_callback("pre_anim_update", function()\n    -- Modify animation state before update\nend)' },
+    { name: 'post_anim_update', desc: 'Called after animation update.', params: [], example: 'client.add_callback("post_anim_update", function()\n    -- Animation has been updated\nend)' },
+    { name: 'local_alpha', desc: 'Called to update local player alpha.', params: [], example: 'client.add_callback("local_alpha", function()\n    -- Adjust local player visibility\nend)' },
+    { name: 'draw_chams', desc: 'Called for chams drawing.', params: [], example: 'client.add_callback("draw_chams", function()\n    local mat = materials.find("models/effects/cube_white")\n    if mat then materials.draw_chams(mat) end\nend)' },
+    { name: 'console_input', desc: 'Called on console input.', params: [], example: 'client.add_callback("console_input", function()\n    print("Console command entered")\nend)' }
+  ]
+};
+
+// --------------------------------------------------------------
+// RENDER ENGINE
+// --------------------------------------------------------------
+const navContainer = document.getElementById('navContainer');
+const docContent = document.getElementById('docContent');
+const searchInput = document.getElementById('search');
+
+function buildNav() {
+  let html = `<div class="category">🌐 Global</div>`;
+  API.global.functions.forEach(f => {
+    html += `<a class="nav-item" data-target="global-${f.name}">${f.name}</a>`;
+  });
+
+  html += `<div class="category">📦 Namespaces</div>`;
+  Object.keys(API.namespaces).forEach(ns => {
+    html += `<div class="group-toggle" data-group="ns-${ns}"><span class="arrow">▶</span> ${ns}</div><div class="group-children" id="ns-${ns}">`;
+    API.namespaces[ns].functions.forEach(f => {
+      html += `<a class="nav-item" data-target="ns-${ns}-${f.name}">${f.name}</a>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="category">🧩 User Types</div>`;
+  Object.keys(API.types).forEach(t => {
+    html += `<div class="group-toggle" data-group="type-${t}"><span class="arrow">▶</span> ${t}</div><div class="group-children" id="type-${t}">`;
+    const type = API.types[t];
+    if (type.methods) type.methods.forEach(m => {
+      html += `<a class="nav-item" data-target="type-${t}-${m.name}">${m.name}</a>`;
+    });
+    if (type.props) type.props.forEach(p => {
+      html += `<a class="nav-item" data-target="type-${t}-prop-${p}">.${p}</a>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="category">📚 Standard Libraries</div>`;
+  Object.keys(API.stdlibs).forEach(slib => {
+    html += `<div class="group-toggle" data-group="stdlib-${slib}"><span class="arrow">▶</span> ${slib}</div><div class="group-children" id="stdlib-${slib}">`;
+    const lib = API.stdlibs[slib];
+    (lib.functions || []).forEach(f => {
+      const name = typeof f === 'string' ? f : f.name;
+      html += `<a class="nav-item" data-target="stdlib-${slib}-${name}">${name}</a>`;
+    });
+    if (lib.constants) lib.constants.forEach(c => {
+      html += `<a class="nav-item" data-target="stdlib-${slib}-const-${c}">${c}</a>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div class="category">⚡ Events</div>`;
+  API.events.forEach(e => {
+    html += `<a class="nav-item" data-target="event-${e.name}">${e.name}</a>`;
+  });
+
+  navContainer.innerHTML = html;
+
+  document.querySelectorAll('.group-toggle').forEach(el => {
+    el.addEventListener('click', function(e) {
+      const target = document.getElementById(this.dataset.group);
+      if (target) {
+        const isOpen = target.style.display !== 'none';
+        target.style.display = isOpen ? 'none' : 'block';
+        this.classList.toggle('open');
+      }
+    });
+    const target = document.getElementById(el.dataset.group);
+    if (target) { target.style.display = 'none'; el.classList.remove('open'); }
+  });
+
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', function() {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      this.classList.add('active');
+      const target = this.dataset.target;
+      renderDoc(target);
+      if (window.innerWidth <= 760) document.getElementById('sidebar').classList.remove('open');
+    });
+  });
+}
+
+function renderDoc(targetId) {
+  let html = '';
+  const parts = targetId.split('-');
+
+  if (parts[0] === 'global') {
+    const name = parts.slice(1).join('-');
+    const fn = API.global.functions.find(f => f.name === name);
+    if (fn) html = renderFunction(fn, 'Global', 'global');
+  }
+
+  if (parts[0] === 'ns') {
+    const ns = parts[1];
+    const name = parts.slice(2).join('-');
+    const nsData = API.namespaces[ns];
+    if (nsData) {
+      const fn = nsData.functions.find(f => f.name === name);
+      if (fn) html = renderFunction(fn, ns, 'ns');
+    }
+  }
+
+  if (parts[0] === 'type') {
+    const typeName = parts[1];
+    const typeData = API.types[typeName];
+    if (typeData) {
+      if (parts[2] === 'prop') {
+        const prop = parts[3];
+        html = renderProperty(typeName, prop, typeData);
+      } else {
+        const methodName = parts.slice(2).join('-');
+        const method = typeData.methods?.find(m => m.name === methodName);
+        if (method) html = renderMethod(typeName, method, typeData);
+      }
+    }
+  }
+
+  if (parts[0] === 'stdlib') {
+    const libName = parts[1];
+    const lib = API.stdlibs[libName];
+    if (lib) {
+      if (parts[2] === 'const') {
+        const constName = parts[3];
+        html = renderStdConst(libName, constName, lib);
+      } else {
+        const fnName = parts.slice(2).join('-');
+        const fn = lib.functions?.find(f => typeof f === 'string' ? f === fnName : f.name === fnName);
+        if (fn) html = renderStdFunction(libName, fn, lib);
+      }
+    }
+  }
+
+  if (parts[0] === 'event') {
+    const eventName = parts.slice(1).join('-');
+    const ev = API.events.find(e => e.name === eventName);
+    if (ev) html = renderEvent(ev);
+  }
+
+  if (!html) html = `<div class="doc-section"><p>Select an item from the sidebar.</p></div>`;
+  docContent.innerHTML = html;
+  document.querySelectorAll('.code-block pre').forEach(block => {
+    block.innerHTML = block.textContent;
+  });
+
+  // Event link handlers
+  document.querySelectorAll('.event-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const targetId = this.getAttribute('href').substring(1);
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth' });
+        // Also highlight the corresponding nav item
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        const navItem = document.querySelector(`[data-target="event-${targetId.replace('events-section', '') || 'render'}"]`);
+        if (navItem) navItem.classList.add('active');
+      }
+    });
+  });
+}
+
+function renderFunction(fn, namespace, type) {
+  const paramsHtml = fn.params ? fn.params.map(p => 
+    `<div><span class="pname">${p.name}</span> <span class="ptype">${p.type}${p.opt ? ' (optional)' : ''}</span></div>`
+  ).join('') : '';
+
+  let exampleHtml = '';
+  const complex = ['trace_line', 'trace_hull', 'trace_bullet', 'get', 'post', 'create', 'draw_chams', 'set_move', 'add_callback', 'get_local_player', 'from_handle'];
+  if (complex.some(c => fn.name.includes(c))) {
+    exampleHtml = `<div class="code-block"><button class="copy-btn">Copy</button><pre>${generateExample(fn, namespace)}</pre></div>`;
+  }
+
+  let related = '';
+  if (fn.name === 'add_callback') {
+    related = `<div class="note"><strong>Related:</strong> See <a href="#events-section" class="event-link">Events</a> section for all available events.</div>`;
+  }
+
+  return `
+    <div class="doc-section fade-in">
+      <h2>${fn.name} <span class="type-tag">function</span></h2>
+      <div class="signature">${fn.sig}</div>
+      <div class="desc">${fn.desc}</div>
+      ${fn.params ? `<div class="params">${paramsHtml}</div>` : ''}
+      ${exampleHtml}
+      ${related}
+      <div class="note"><strong>Namespace:</strong> ${namespace}</div>
+    </div>
+  `;
+}
+
+function renderMethod(typeName, method, typeData) {
+  const paramsHtml = method.params ? method.params.map(p => 
+    `<div><span class="pname">${p.name}</span> <span class="ptype">${p.type}${p.opt ? ' (optional)' : ''}</span></div>`
+  ).join('') : '';
+
+  let exampleHtml = '';
+  const complex = ['set_move', 'lerp', 'trace', 'get', 'post', 'draw_chams'];
+  if (complex.some(c => method.name.includes(c))) {
+    exampleHtml = `<div class="code-block"><button class="copy-btn">Copy</button><pre>${generateExample(method, typeName)}</pre></div>`;
+  }
+
+  return `
+    <div class="doc-section fade-in">
+      <h2>${typeName}:${method.name} <span class="type-tag">method</span></h2>
+      <div class="signature">${method.sig}</div>
+      <div class="desc">${method.desc}</div>
+      ${method.params ? `<div class="params">${paramsHtml}</div>` : ''}
+      ${exampleHtml}
+      <div class="note"><strong>Type:</strong> ${typeName}</div>
+    </div>
+  `;
+}
+
+function renderProperty(typeName, prop, typeData) {
+  return `
+    <div class="doc-section fade-in">
+      <h2>${typeName}.${prop} <span class="type-tag">property</span></h2>
+      <div class="desc">Property of ${typeName}.</div>
+      <div class="note"><strong>Type:</strong> ${typeName}</div>
+    </div>
+  `;
+}
+
+function renderStdFunction(libName, fn, lib) {
+  const name = typeof fn === 'string' ? fn : fn.name;
+  const sig = typeof fn === 'string' ? `${libName}.${fn}()` : fn.sig || `${libName}.${fn.name}()`;
+  const desc = typeof fn === 'string' ? '' : fn.desc || '';
+  const example = fn.example || `-- Example:\nlocal result = ${libName}.${name}()`;
+  
+  return `
+    <div class="doc-section fade-in">
+      <h2>${libName}.${name} <span class="type-tag">stdlib</span></h2>
+      <div class="signature">${sig}</div>
+      <div class="desc">${desc || 'Standard library function.'}</div>
+      <div class="code-block"><button class="copy-btn">Copy</button><pre>${example}</pre></div>
+      <div class="note"><strong>Library:</strong> ${libName}</div>
+    </div>
+  `;
+}
+
+function renderStdConst(libName, constName, lib) {
+  return `
+    <div class="doc-section fade-in">
+      <h2>${libName}.${constName} <span class="type-tag">constant</span></h2>
+      <div class="desc">Constant from ${libName} library.</div>
+      <div class="code-block"><button class="copy-btn">Copy</button><pre>-- Use:\nlocal val = ${libName}.${constName}</pre></div>
+    </div>
+  `;
+}
+
+function renderEvent(ev) {
+  const paramsHtml = ev.params ? ev.params.map(p => 
+    `<div><span class="pname">${p.name}</span> <span class="ptype">${p.type}</span></div>`
+  ).join('') : '';
+
+  return `
+    <div class="doc-section fade-in" id="events-section">
+      <h2>${ev.name} <span class="type-tag">event</span></h2>
+      <div class="desc">${ev.desc}</div>
+      ${ev.params ? `<div class="event-params"><strong>Parameters:</strong> ${paramsHtml}</div>` : ''}
+      <div class="code-block"><button class="copy-btn">Copy</button><pre>${ev.example || `client.add_callback("${ev.name}", function(${ev.params ? ev.params.map(p=>p.name).join(', ') : ''})\n    -- your code here\nend)`}</pre></div>
+      <div class="note"><strong>Event</strong> — use with client.add_callback</div>
+    </div>
+  `;
+}
+
+function generateExample(fn, context) {
+  const name = fn.name;
+  if (name === 'get_local_player') {
+    return `local local_player = entity.get_local_player()\nif local_player then\n    print("Local player health: " .. local_player:get_health())\nend`;
+  } else if (name === 'trace_line') {
+    return `local start = entity.get_local_player():get_eye_position()\nlocal end_pos = start + vector(0, 0, 100)\nlocal trace = utils.trace_line(start, end_pos, 0xFFFFFFFF, function(ent) return ent:is_player() end)\nprint("Trace fraction: " .. trace.fraction)`;
+  } else if (name === 'trace_bullet') {
+    return `local local_player = entity.get_local_player()\nlocal target = entity.get(2)\nif target and target:is_alive() then\n    local data = utils.trace_bullet(local_player, local_player:get_eye_position(), target:get_eye_position())\n    print("Damage: " .. data.damage)\nend`;
+  } else if (name === 'set_move') {
+    return `-- Inside createmove callback\nclient.add_callback("createmove", function(cmd)\n    cmd:set_move(90, 250) -- move right at 250 speed\nend)`;
+  } else if (name === 'add_callback') {
+    return `client.add_callback("render", function()\n    local player = entity.get_local_player()\n    if player and player:is_alive() then\n        render.text(1, vector(10, 10), color(255,255,255), "", "Hello from Lua!")\n    end\nend)`;
+  } else if (name === 'draw_chams') {
+    return `local mat = materials.create("my_chams", "VertexLitGeneric", { color = {1,0,0}, envmap = "models/effects/cube_white" })\nmaterials.draw_chams(mat)`;
+  } else if (name === 'get' && context === 'entity') {
+    return `local player = entity.get(1) -- get first entity\nif player and player:is_player() then\n    print("Entity is a player: " .. player:get_name())\nend`;
+  } else if (name === 'from_handle') {
+    return `local handle = 0x12345678\nlocal ent = entity.from_handle(handle)\nif ent then\n    print("Entity found from handle")\nend`;
+  } else if (name === 'post' || name === 'get') {
+    return `network.get("https://api.example.com/data", { ["Authorization"] = "Bearer token" }, function(response)\n    print("Got response: " .. response)\nend)`;
+  } else if (name === 'create') {
+    return `local mat = materials.create("my_material", "VertexLitGeneric", { color = {1,0,0}, envmap = "models/effects/cube_white" })\nprint("Created material: " .. mat:get_name())`;
+  } else if (name === 'lerp') {
+    return `local start = vector(0, 0, 0)\nlocal target = vector(10, 10, 10)\nlocal result = vector.lerp(start, target, 0.5) -- returns (5,5,5)`;
+  } else {
+    const args = fn.params ? fn.params.map(p => p.name).join(', ') : '';
+    return `local result = ${context}.${name}(${args})`;
+  }
+}
+
+// Search
+searchInput.addEventListener('input', function() {
+  const query = this.value.toLowerCase().trim();
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const text = el.textContent.toLowerCase();
+    el.style.display = text.includes(query) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.group-children').forEach(g => {
+    const children = g.querySelectorAll('.nav-item');
+    let visible = false;
+    children.forEach(c => { if (c.style.display !== 'none') visible = true; });
+    g.style.display = visible ? 'block' : 'none';
+    const toggle = document.querySelector(`[data-group="${g.id}"]`);
+    if (toggle) toggle.classList.toggle('open', visible);
+  });
+});
+
+// Copy buttons
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('copy-btn')) {
+    const pre = e.target.parentElement.querySelector('pre');
+    if (pre) {
+      navigator.clipboard?.writeText(pre.textContent);
+      e.target.textContent = 'Copied!';
+      setTimeout(() => e.target.textContent = 'Copy', 1200);
+    }
+  }
+});
+
+// Hamburger
+document.getElementById('hamburger').addEventListener('click', function() {
+  document.getElementById('sidebar').classList.toggle('open');
+});
+
+// Init
+buildNav();
+renderDoc('global-print');
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
